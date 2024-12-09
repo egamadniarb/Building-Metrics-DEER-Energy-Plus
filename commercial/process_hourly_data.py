@@ -1,5 +1,4 @@
 import platform
-import os
 import csv
 import re
 from pathlib import Path, PurePath
@@ -30,17 +29,17 @@ def find_column_headings(file, filter_expression):
 def make_search_paths(root, search_folders):
     search_paths = []
     for folder in search_folders:
-        search_paths.append(PurePath.joinpath(Path(root), Path(folder)))
+        search_paths.append(PurePath.joinpath(PurePath(root), PurePath(folder)))
     return search_paths
 
 
 def search_directories(root_paths, file_name):
     paths = []
     for path in root_paths:
-        for dir_name, sub_dirs, files in os.walk(path):
+        for dir_name, sub_dirs, files in Path.walk(path):
             for file in files:
                 if file.lower() == file_name:
-                    paths.append(os.path.join(dir_name, file))
+                    paths.append(PurePath.joinpath(dir_name, file))
 
     return paths
 
@@ -99,6 +98,11 @@ def print_it(results):
                 measure_list.sort()
                 for measure in measure_list:
                     print("\t\t\t{}".format(measure))
+                    print(
+                        "\t\t\t{}".format(
+                            results[building_type][cz][system_type][measure]["file"]
+                        )
+                    )
                     for set in ["heating", "cooling", "fan"]:
                         print("\t\t\t\t{} Columns: ".format(set))
                         for col in results[building_type][cz][system_type][measure][
