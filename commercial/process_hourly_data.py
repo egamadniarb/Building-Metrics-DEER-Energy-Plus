@@ -75,7 +75,7 @@ def set_up(offset, all_files):
             find_column_headings(file, "Cooling Coil .* Energy")
         )
         results[building_type][cz][system_type][measure]["columns"]["fan"] = (
-            find_column_headings(file, "Fan Runtime Fraction")
+            find_column_headings(file, "Fan Runtime Fraction | Fan Part Load Ratio")
         )
 
     return results
