@@ -30,6 +30,7 @@ def make_search_paths(root, search_folders):
     search_paths = []
     for folder in search_folders:
         search_paths.append(PurePath.joinpath(PurePath(root), PurePath(folder)))
+
     return search_paths
 
 
@@ -44,7 +45,7 @@ def search_directories(root_paths, file_name):
     return paths
 
 
-def set_up(offset, all_files):
+def process_files(offset, all_files):
 
     results = {}
 
@@ -54,6 +55,10 @@ def set_up(offset, all_files):
         measure = parts[7 + offset].split("-")[4]
         system_type = parts[7 + offset].split("-")[3]
         cz = parts[5 + offset]
+        # if building_type not in ["Asm"]:
+        #     continue
+        if measure not in ["Unocc"]:
+            continue
         if building_type not in results.keys():
             results[building_type] = {}
         if cz not in results[building_type].keys():
@@ -65,50 +70,120 @@ def set_up(offset, all_files):
         results[building_type][cz][system_type][measure]["file"] = file
         results[building_type][cz][system_type][measure]["columns"] = {}
 
-        results[building_type][cz][system_type][measure]["columns"]["all"] = (
-            get_all_column_headings(file)
-        )
-        results[building_type][cz][system_type][measure]["columns"]["heating"] = (
-            find_column_headings(file, "Heating Coil .* Energy")
-        )
-        results[building_type][cz][system_type][measure]["columns"]["cooling"] = (
-            find_column_headings(file, "Cooling Coil .* Energy")
-        )
-        results[building_type][cz][system_type][measure]["columns"]["fan"] = (
-            find_column_headings(file, "Fan Runtime Fraction | Fan Part Load Ratio")
-        )
+        heating = find_column_headings(file, "Heating Coil .* Energy")
+        cooling = find_column_headings(file, "Cooling Coil .* Energy")
+        fan = find_column_headings(file, "Fan Runtime Fraction | Fan Part Load Ratio")
+
+        results[building_type][cz][system_type][measure]["columns"]["heating"] = {}
+        for heating_col in heating:
+            for fan_col in fan:
+                if heating_col.split(":")[0].removesuffix(
+                    "HEATING COIL"
+                ) == fan_col.split(":")[0].removesuffix("SUPPLY FAN"):
+                    results[building_type][cz][system_type][measure]["columns"][
+                        "heating"
+                    ][heating_col] = fan_col
+                    break
+                if heating_col.split(":")[0].removesuffix(
+                    "HEATING COIL"
+                ) == fan_col.split(":")[0].removesuffix("UNITARY"):
+                    results[building_type][cz][system_type][measure]["columns"][
+                        "heating"
+                    ][heating_col] = fan_col
+
+        results[building_type][cz][system_type][measure]["columns"]["cooling"] = {}
+        for cooling_col in cooling:
+            for fan_col in fan:
+                if cooling_col.split(":")[0].removesuffix(
+                    "COOLING COIL"
+                ) == fan_col.split(":")[0].removesuffix("SUPPLY FAN"):
+                    results[building_type][cz][system_type][measure]["columns"][
+                        "cooling"
+                    ][cooling_col] = fan_col
+                    break
+                if cooling_col.split(":")[0].removesuffix(
+                    "COOLING COIL"
+                ) == fan_col.split(":")[0].removesuffix("UNITARY"):
+                    results[building_type][cz][system_type][measure]["columns"][
+                        "cooling"
+                    ][cooling_col] = fan_col
+
+        results[building_type][cz][system_type][measure]["heating_accumulator"] = 0.0
+        results[building_type][cz][system_type][measure]["cooling_accumulator"] = 0.0
+        with open(file, newline="") as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                for heating_col in results[building_type][cz][system_type][measure][
+                    "columns"
+                ]["heating"].keys():
+                    if (
+                        float(
+                            row[
+                                results[building_type][cz][system_type][measure][
+                                    "columns"
+                                ]["heating"][heating_col]
+                            ]
+                        )
+                        < 1.0
+                    ):
+                        results[building_type][cz][system_type][measure][
+                            "heating_accumulator"
+                        ] += float(row[heating_col])
+
+                for cooling_col in results[building_type][cz][system_type][measure][
+                    "columns"
+                ]["cooling"].keys():
+                    if (
+                        float(
+                            row[
+                                results[building_type][cz][system_type][measure][
+                                    "columns"
+                                ]["cooling"][cooling_col]
+                            ]
+                        )
+                        < 1.0
+                    ):
+                        results[building_type][cz][system_type][measure][
+                            "cooling_accumulator"
+                        ] += float(row[cooling_col])
 
     return results
 
 
-def print_it(results):
+def print_results(results):
+
+    print("Building Type,Climate Zone,System Type,Heating Energy,Cooling Energy")
     building_type_list = list(results.keys())
     building_type_list.sort()
     for building_type in building_type_list:
-        print(building_type)
         cz_list = list(results[building_type].keys())
         cz_list.sort()
         for cz in cz_list:
-            print("\t{}".format(cz))
             system_type_list = list(results[building_type][cz].keys())
             system_type_list.sort()
             for system_type in system_type_list:
-                print("\t\t{}".format(system_type))
                 measure_list = list(results[building_type][cz][system_type].keys())
                 measure_list.sort()
                 for measure in measure_list:
-                    print("\t\t\t{}".format(measure))
                     print(
-                        "\t\t\t{}".format(
-                            results[building_type][cz][system_type][measure]["file"]
+                        "{},{},{},{},{}".format(
+                            building_type,
+                            cz,
+                            system_type,
+                            round(
+                                results[building_type][cz][system_type][measure][
+                                    "heating_accumulator"
+                                ],
+                                2,
+                            ),
+                            round(
+                                results[building_type][cz][system_type][measure][
+                                    "cooling_accumulator"
+                                ],
+                                2,
+                            ),
                         )
                     )
-                    for set in ["heating", "cooling", "fan"]:
-                        print("\t\t\t\t{} Columns: ".format(set))
-                        for col in results[building_type][cz][system_type][measure][
-                            "columns"
-                        ][set]:
-                            print("\t\t\t\t\t{}".format(col))
 
 
 def main():
@@ -132,9 +207,9 @@ def main():
     # Get all the results files
     all_files = search_directories(search_paths, results_file_name)
 
-    results = set_up(offset, all_files)
+    results = process_files(offset, all_files)
 
-    print_it(results)
+    print_results(results)
 
 
 if __name__ == "__main__":
