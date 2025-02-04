@@ -47,31 +47,6 @@ def search_directories(root_paths, file_name):
     return paths
 
 
-def should_ignore(building_type, system_type, column):
-
-    if system_type in ["cDXGF", "cDXHP", "cPTAC"]:
-        if not re.search("SZ-CAV", column, flags=re.IGNORECASE):
-            return True
-        if building_type in ["EPr", "ESe", "EUn", "MBT", "RFF", "RSD", "RtL", "Htl"]:
-            if re.search("KITCHEN", column, flags=re.IGNORECASE):
-                return True
-        if building_type in ["EUn"]:
-            if re.search("DORM", column, flags=re.IGNORECASE):
-                return True
-    if system_type in ["cPVVG"]:
-        if not re.search("SZ-VAV", column, flags=re.IGNORECASE):
-            return True
-        if building_type in ["ECC", "Htl"]:
-            if re.search("KITCHEN", column, flags=re.IGNORECASE):
-                return True
-        if building_type in ["MBT"]:
-            if re.search("LAB", column, flags=re.IGNORECASE):
-                return True
-        if re.search(" ATU", column, flags=re.IGNORECASE):
-            return True
-    return False
-
-
 def set_up(offset, all_files):
 
     results = {}
@@ -82,9 +57,6 @@ def set_up(offset, all_files):
         measure = parts[7 + offset].split("-")[4]
         system_type = parts[7 + offset].split("-")[3]
         cz = parts[5 + offset]
-
-        # if measure not in ["Unocc"]:
-        #     continue
 
         if building_type not in results.keys():
             results[building_type] = {}
@@ -106,11 +78,6 @@ def set_up(offset, all_files):
 
         results[building_type][cz][system_type][measure]["columns"]["heating_gas"] = {}
         for heating_col in heating_gas:
-            # if should_ignore(building_type, system_type, heating_col):
-            #     results[building_type][cz][system_type][measure]["columns"][
-            #         "heating_gas"
-            #     ][heating_col] = "Ignore"
-            #     continue
             for schedule_col in schedules:
                 if heating_col.split(":")[0].removesuffix(
                     "HEATING COIL"
@@ -123,11 +90,6 @@ def set_up(offset, all_files):
             "heating_electricity"
         ] = {}
         for heating_col in heating_electricity:
-            # if should_ignore(building_type, system_type, heating_col):
-            #     results[building_type][cz][system_type][measure]["columns"][
-            #         "heating_electricity"
-            #     ][heating_col] = "Ignore"
-            #     continue
             for schedule_col in schedules:
                 if heating_col.split(":")[0].removesuffix(
                     "HEATING COIL"
@@ -138,11 +100,6 @@ def set_up(offset, all_files):
 
         results[building_type][cz][system_type][measure]["columns"]["cooling"] = {}
         for cooling_col in cooling:
-            # if should_ignore(building_type, system_type, cooling_col):
-            #     results[building_type][cz][system_type][measure]["columns"]["cooling"][
-            #         cooling_col
-            #     ] = "Ignore"
-            #     continue
             for schedule_col in schedules:
                 if cooling_col.split(":")[0].removesuffix(
                     "COOLING COIL"
@@ -253,13 +210,6 @@ def process_schedules(results):
                     for heating_gas_col in results[building_type][cz][system_type][
                         measure
                     ]["columns"]["heating_gas"].keys():
-                        # if (
-                        #     results[building_type][cz][system_type][measure]["columns"][
-                        #         "heating_gas"
-                        #     ][heating_gas_col]
-                        #     == "Ignore"
-                        # ):
-                        #     continue
 
                         data = pd.read_csv(
                             file,
@@ -291,13 +241,6 @@ def process_schedules(results):
                     for heating_electricity_col in results[building_type][cz][
                         system_type
                     ][measure]["columns"]["heating_electricity"].keys():
-                        # if (
-                        #     results[building_type][cz][system_type][measure]["columns"][
-                        #         "heating_electricity"
-                        #     ][heating_electricity_col]
-                        #     == "Ignore"
-                        # ):
-                        #     continue
 
                         data = pd.read_csv(
                             file,
@@ -329,13 +272,6 @@ def process_schedules(results):
                     for cooling_col in results[building_type][cz][system_type][measure][
                         "columns"
                     ]["cooling"].keys():
-                        # if (
-                        #     results[building_type][cz][system_type][measure]["columns"][
-                        #         "cooling"
-                        #     ][cooling_col]
-                        #     == "Ignore"
-                        # ):
-                        #     continue
 
                         data = pd.read_csv(
                             file,
@@ -388,7 +324,7 @@ def main():
 
     results = set_up(offset, all_files)
 
-    process_schedules(results)
+    # process_schedules(results)
 
 
 if __name__ == "__main__":
