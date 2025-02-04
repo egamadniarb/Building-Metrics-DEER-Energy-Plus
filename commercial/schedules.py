@@ -3,7 +3,6 @@ import csv
 import re
 from pathlib import Path, PurePath
 import pandas as pd
-from datetime import datetime
 
 
 def get_all_column_headings(file):
@@ -324,7 +323,7 @@ def main():
 
     results = set_up(offset, all_files)
 
-    # process_schedules(results)
+    process_schedules(results)
 
 
 if __name__ == "__main__":
