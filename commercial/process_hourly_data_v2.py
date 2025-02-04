@@ -65,7 +65,7 @@ def should_ignore(building_type, system_type, column):
         if building_type in ["MBT"]:
             if re.search("LAB", column, flags=re.IGNORECASE):
                 return True
-        if re.search("ATU", column, flags=re.IGNORECASE):
+        if re.search(" ATU", column, flags=re.IGNORECASE):
             return True
     return False
 
@@ -81,8 +81,6 @@ def set_up(offset, all_files):
         system_type = parts[7 + offset].split("-")[3]
         cz = parts[5 + offset]
 
-        if system_type in ["cPVVG"]:
-            continue
         if measure not in ["Unocc"]:
             continue
 
@@ -102,7 +100,7 @@ def set_up(offset, all_files):
             file, "Heating Coil Electricity Energy"
         )
         cooling = find_column_headings(file, "Cooling Coil .* Energy")
-        fans = find_column_headings(file, "Fan Runtime Fraction | Fan Part Load Ratio")
+        schedules = find_column_headings(file, "SCHEDULE")
 
         results[building_type][cz][system_type][measure]["columns"]["heating_gas"] = {}
         for heating_col in heating_gas:
@@ -111,20 +109,13 @@ def set_up(offset, all_files):
                     "heating_gas"
                 ][heating_col] = "Ignore"
                 continue
-            for fan_col in fans:
+            for schedule_col in schedules:
                 if heating_col.split(":")[0].removesuffix(
                     "HEATING COIL"
-                ) == fan_col.split(":")[0].removesuffix("SUPPLY FAN"):
+                ) == schedule_col.split(":")[0].removesuffix("OPERATION SCHEDULE"):
                     results[building_type][cz][system_type][measure]["columns"][
                         "heating_gas"
-                    ][heating_col] = fan_col
-                    break
-                if heating_col.split(":")[0].removesuffix(
-                    "HEATING COIL"
-                ) == fan_col.split(":")[0].removesuffix("UNITARY"):
-                    results[building_type][cz][system_type][measure]["columns"][
-                        "heating_gas"
-                    ][heating_col] = fan_col
+                    ][heating_col] = schedule_col
 
         results[building_type][cz][system_type][measure]["columns"][
             "heating_electricity"
@@ -135,20 +126,13 @@ def set_up(offset, all_files):
                     "heating_electricity"
                 ][heating_col] = "Ignore"
                 continue
-            for fan_col in fans:
+            for schedule_col in schedules:
                 if heating_col.split(":")[0].removesuffix(
                     "HEATING COIL"
-                ) == fan_col.split(":")[0].removesuffix("SUPPLY FAN"):
+                ) == schedule_col.split(":")[0].removesuffix("OPERATION SCHEDULE"):
                     results[building_type][cz][system_type][measure]["columns"][
                         "heating_electricity"
-                    ][heating_col] = fan_col
-                    break
-                if heating_col.split(":")[0].removesuffix(
-                    "HEATING COIL"
-                ) == fan_col.split(":")[0].removesuffix("UNITARY"):
-                    results[building_type][cz][system_type][measure]["columns"][
-                        "heating_electricity"
-                    ][heating_col] = fan_col
+                    ][heating_col] = schedule_col
 
         results[building_type][cz][system_type][measure]["columns"]["cooling"] = {}
         for cooling_col in cooling:
@@ -157,20 +141,13 @@ def set_up(offset, all_files):
                     cooling_col
                 ] = "Ignore"
                 continue
-            for fan_col in fans:
+            for schedule_col in schedules:
                 if cooling_col.split(":")[0].removesuffix(
                     "COOLING COIL"
-                ) == fan_col.split(":")[0].removesuffix("SUPPLY FAN"):
+                ) == schedule_col.split(":")[0].removesuffix("OPERATION SCHEDULE"):
                     results[building_type][cz][system_type][measure]["columns"][
                         "cooling"
-                    ][cooling_col] = fan_col
-                    break
-                if cooling_col.split(":")[0].removesuffix(
-                    "COOLING COIL"
-                ) == fan_col.split(":")[0].removesuffix("UNITARY"):
-                    results[building_type][cz][system_type][measure]["columns"][
-                        "cooling"
-                    ][cooling_col] = fan_col
+                    ][cooling_col] = schedule_col
 
         results[building_type][cz][system_type][measure][
             "heating_gas_accumulator"
@@ -229,7 +206,7 @@ def calculate_sums(results):
                                             ]["columns"]["heating_gas"][heating_gas_col]
                                         ]
                                     )
-                                    < 1.0
+                                    == 0.0
                                 ):
                                     results[building_type][cz][system_type][measure][
                                         "heating_gas_accumulator"
@@ -258,7 +235,7 @@ def calculate_sums(results):
                                             ]
                                         ]
                                     )
-                                    < 1.0
+                                    == 0.0
                                 ):
                                     results[building_type][cz][system_type][measure][
                                         "heating_electricity_accumulator"
@@ -285,7 +262,7 @@ def calculate_sums(results):
                                             ]["columns"]["cooling"][cooling_col]
                                         ]
                                     )
-                                    < 1.0
+                                    == 0.0
                                 ):
                                     results[building_type][cz][system_type][measure][
                                         "cooling_accumulator"
@@ -323,7 +300,7 @@ def print_column_matchings(results, output_file):
                         for heating_gas_col in heating_gas:
                             columns.write("\t\t\t\tCoil: {}\n".format(heating_gas_col))
                             columns.write(
-                                "\t\t\t\tFan: {}\n".format(
+                                "\t\t\t\tSchedule Value: {}\n".format(
                                     results[building_type][cz][system_type][measure][
                                         "columns"
                                     ]["heating_gas"][heating_gas_col]
@@ -341,7 +318,7 @@ def print_column_matchings(results, output_file):
                                 "\t\t\t\tCoil: {}\n".format(heating_electricity_col)
                             )
                             columns.write(
-                                "\t\t\t\tFan: {}\n".format(
+                                "\t\t\t\tScedule Value: {}\n".format(
                                     results[building_type][cz][system_type][measure][
                                         "columns"
                                     ]["heating_electricity"][heating_electricity_col]
@@ -357,7 +334,7 @@ def print_column_matchings(results, output_file):
                         for cooling_col in cooling:
                             columns.write("\t\t\t\tCoil: {}\n".format(cooling_col))
                             columns.write(
-                                "\t\t\t\tFan: {}\n".format(
+                                "\t\t\t\tScedule Value: {}\n".format(
                                     results[building_type][cz][system_type][measure][
                                         "columns"
                                     ]["cooling"][cooling_col]
