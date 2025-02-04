@@ -16,13 +16,17 @@ def analyze_schedule(data):
         schedule_ranges = []
         on_period = None
         for _, row in df.iterrows():
-            if row["flag"] == 1 and on_period is None:
-                on_period = row["hour"]
-            elif row["flag"] == 0 and on_period is not None:
-                schedule_ranges.append((on_period, row["hour"]))
-                on_period = None
+            if row["flag"] == 1:
+                if on_period is None:
+                    on_period = row["hour"]
+            else:
+                if on_period is not None:
+                    schedule_ranges.append((on_period, row["hour"]))
+                    on_period = None
         if on_period is not None:
-            schedule_ranges.append((on_period, 23))
+            schedule_ranges.append(
+                (on_period, 24)
+            )  # Ensure the last on-period is captured correctly
         return schedule_ranges
 
     def format_schedule(ranges):
@@ -61,9 +65,9 @@ def analyze_schedule(data):
 data = pd.DataFrame(
     {
         "datetime": pd.date_range(start="2024-01-01", periods=24 * 91, freq="h"),
-        "flag": ([0] * 8 + [1] * 9 + [0] * 7) * 31
-        + ([0] * 10 + [1] * 4 + [0] * 10) * 29
-        + ([0] * 7 + [1] * 10 + [0] * 7) * 31,
+        "flag": ([0] * 3 + [1] * 3 + [0] * 3 + [1] * 5 + [0] * 10) * 31
+        + ([0] * 6 + [1] * 3 + [0] * 6 + [1] * 2 + [0] * 7) * 29
+        + ([0] * 5 + [1] * 6 + [0] * 5 + [1] * 3 + [0] * 5) * 31,
     }
 )
 
