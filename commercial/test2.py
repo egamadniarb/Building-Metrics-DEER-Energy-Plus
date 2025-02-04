@@ -7,7 +7,7 @@ def adjust_hours(df, column):
 
     for time_str in df[column]:
         date_part, time_part = time_str.split(" ")
-        hour, minute, seconds = map(int, time_part.split(":"))
+        hour, minute = map(int, time_part.split(":"))
 
         if hour == 24:  # Convert 24:00 to 23:00 of the same day
             new_hour = 23
