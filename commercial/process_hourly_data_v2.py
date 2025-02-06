@@ -57,7 +57,7 @@ def should_ignore(building_type, system_type, column):
             if re.search("DORM", column, flags=re.IGNORECASE):
                 return True
         if building_type in ["Htl"]:
-            if re.search("KITCHEN|GUESTRM", column, flags=re.IGNORECASE):
+            if re.search("GUESTRM", column, flags=re.IGNORECASE):
                 return True
     if system_type in ["cPVVG"]:
         if not re.search("SZ-VAV", column, flags=re.IGNORECASE):
