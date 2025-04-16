@@ -283,6 +283,11 @@ def set_up(offset, batch):
     return results
 
 
+# There are two stratagies for calculating off hours. Fan PLR < 1 and Operation Schedule == 0
+# The setup function assigned the "matching" column as needed. As 0 IS less than one a single
+# test is all that is needed here
+
+
 def calculate_sums(results):
 
     building_type_list = list(results.keys())
