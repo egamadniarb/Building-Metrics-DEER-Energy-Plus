@@ -535,14 +535,17 @@ def main():
 
     # root of the DEER package install
     if platform.system() in ["Windows"]:
-        root = "Z:\\"
+        root = "C:\\"
+        search_folder = "Saved Runs\\"
+        results_folder = PurePath("C:\\Results\\")
     elif platform.system() in ["Linux", "Darwin"]:
         root = "/Users/jwj/"
+        search_folder = "e_plus_runs/"
+        results_folder = PurePath("/Users/jwj/e_plus_results/")
     else:
         print("What, exactly, are you running this on!")
         exit()
 
-    search_folder = "e_plus_runs/"
     search_path = make_search_paths(root, search_folder)
     offset = len(PurePath(root).parts) + len(PurePath(search_folder).parts)
 
@@ -554,8 +557,6 @@ def main():
 
     # Create batches by building type and measure, only for the measure type not the baseline type
     batches = by_batch(offset, all_files)
-
-    results_folder = PurePath("/Users/jwj/e_plus_results/")
 
     # Do each batch
     for building_type in batches.keys():
