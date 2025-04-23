@@ -31,94 +31,184 @@ def by_batch(offset, all_files):
         if building_type not in batches.keys():
             batches[building_type] = {}
         if measure not in batches[building_type].keys():
-            batches[building_type][measure] = []
-        batches[building_type][measure].append(file)
+            batches[building_type][measure] = {}
+        if system_type not in batches[building_type][measure].keys():
+            batches[building_type][measure][system_type] = {}
+        if type not in batches[building_type][measure][system_type].keys():
+            batches[building_type][measure][system_type][type] = []
+        batches[building_type][measure][system_type][type].append(file)
 
     return batches
 
 
-def write_results(results, output_file):
-    energy_results = []
-    building_type_list = list(results.keys())
-    building_type_list.sort()
-    for building_type in building_type_list:
-        cz_list = list(results[building_type].keys())
-        cz_list.sort()
-        for cz in cz_list:
-            system_type_list = list(results[building_type][cz].keys())
-            system_type_list.sort()
-            for system_type in system_type_list:
-                measure_list = list(results[building_type][cz][system_type].keys())
-                measure_list.sort()
-                for measure in measure_list:
-                    row = {
-                        "Building Type": building_type,
-                        "Climate Zone": cz,
-                        "System Type": system_type,
-                        "Heating Gas Energy": round(
-                            results[building_type][cz][system_type][measure][
-                                "heating_gas_accumulator"
-                            ],
-                            2,
-                        ),
-                        "Heating Electricity Energy": round(
-                            results[building_type][cz][system_type][measure][
-                                "heating_electricity_accumulator"
-                            ],
-                            2,
-                        ),
-                        "Cooling Energy": round(
-                            results[building_type][cz][system_type][measure][
-                                "cooling_accumulator"
-                            ],
-                            2,
-                        ),
-                        "Heating Gas Total Energy": round(
-                            results[building_type][cz][system_type][measure][
-                                "heating_gas_total_accumulator"
-                            ],
-                            2,
-                        ),
-                        "Heating Electricity Total Energy": round(
-                            results[building_type][cz][system_type][measure][
-                                "heating_electricity_total_accumulator"
-                            ],
-                            2,
-                        ),
-                        "Cooling Total Energy": round(
-                            results[building_type][cz][system_type][measure][
-                                "cooling_total_accumulator"
-                            ],
-                            2,
-                        ),
-                    }
+def process(batch, offset):
 
-                    energy_results.append(row)
+    result_rows = []
+    for file in batch:
+        result_row = {}
+        parts = PurePath(file).parts
+        building_type = parts[offset + 2]
+        cz = parts[offset + 1]
+        run = parts[offset + 3].split("-")
+        measure = run[0]
+        system_type = run[1]
+        type = run[2]
+        result_row["Filename"] = file
+        result_row["Measure"] = measure
+        result_row["BldgType"] = building_type
+        result_row["BldgLoc"] = cz
+        result_row["BldgHVAC"] = system_type
+        result_row["Run Type"] = type
+
+        with open(file, newline="") as csvfile:
+            reader = csv.reader(csvfile)
+            end_use_flag = False
+            unmet_hours_flag = False
+            building_area_flag = False
+            report_flag = False
+            cooling_flag = False
+            heating_flag = False
+            cooling_total_capacity = 0.0
+            heating_total_capacity = 0.0
+            for row in reader:
+                if len(row) != 0:
+                    if row[0] == "End Uses":
+                        end_use_flag = True
+                        continue
+                    if row[0] == "Time Setpoint Not Met":
+                        unmet_hours_flag = True
+                        continue
+                    if row[0] == "Building Area":
+                        building_area_flag = True
+                        continue
+                    if row[0] == "REPORT:" and row[1] == "Equipment Summary":
+                        report_flag = True
+                        continue
+                    if report_flag and row[0] == "Cooling Coils":
+                        cooling_flag = True
+                        continue
+                    elif report_flag and row[0] == "Heating Coils":
+                        heating_flag = True
+                        continue
+                    elif report_flag and (not cooling_flag and not heating_flag):
+                        continue
+                    if report_flag and cooling_flag:
+                        if row[0] == "" and row[1] != "":
+                            # print(row)
+                            cooling_total_capacity += float(row[4])
+                            continue
+                        elif row[0] != "":
+                            cooling_flag = False
+                            result_row["Cooling Capacity"] = cooling_total_capacity
+                            continue
+                    if report_flag and heating_flag:
+                        if row[0] == "" and row[1] == "None":
+                            heating_flag = False
+                            report_flag = False
+                            result_row["Heating Capacity"] = heating_total_capacity
+                        elif row[0] == "" and row[1] != "":
+                            # print(row)
+                            heating_total_capacity += float(row[4])
+                            continue
+                        elif row[0] != "":
+                            heating_flag = False
+                            report_flag = False
+                            result_row["Heating Capacity"] = heating_total_capacity
+                            continue
+                    if building_area_flag:
+                        if row[1] == "Net Conditioned Building Area":
+                            result_row["Conditioned Area"] = float(row[2])
+                            building_area_flag = False
+                            continue
+                        else:
+                            continue
+                    if end_use_flag:
+                        if row[1] == "Heating":
+                            result_row["Electricity Heating"] = float(row[2])
+                            result_row["Natural Gas Heating"] = float(row[3])
+                            continue
+                        elif row[1] == "Cooling":
+                            result_row["Electricity Cooling"] = float(row[2])
+                            continue
+                        elif row[1] == "Fans":
+                            result_row["Electricity Fans"] = float(row[2])
+                            continue
+                        elif row[1] == "Total End Uses":
+                            end_use_flag = False
+                            continue
+                        else:
+                            continue
+                    if unmet_hours_flag:
+                        if row[1] == "Facility":
+                            result_row["Unmet Hours Heating"] = float(row[2])
+                            result_row["Unmet Hours Cooling"] = float(row[3])
+                            unmet_hours_flag = False
+                            continue
+                        else:
+                            continue
+            if end_use_flag or unmet_hours_flag or building_area_flag or report_flag:
+                print("That's not Good")
+            csvfile.close()
+            result_rows.append(result_row)
+    return result_rows
+
+
+def write_results(results_rows, output_file):
 
     with open(output_file, "a", newline="") as csvfile:
         fieldnames = [
-            "Building Type",
-            "Climate Zone",
-            "System Type",
-            "Heating Gas Energy",
-            "Heating Electricity Energy",
-            "Cooling Energy",
-            "Heating Gas Total Energy",
-            "Heating Electricity Total Energy",
-            "Cooling Total Energy",
+            "Filename",
+            "Measure",
+            "BldgType",
+            "BldgLoc",
+            "BldgHVAC",
+            "Run Type",
+            "Cooling Capacity",
+            "Heating Capacity",
+            "Conditioned Area",
+            "Electricity Heating",
+            "Natural Gas Heating",
+            "Electricity Cooling",
+            "Electricity Fans",
+            "Unmet Hours Heating",
+            "Unmet Hours Cooling",
+        ]
+        writer = csv.DictWriter(csvfile, fieldnames)
+        # writer.writeheader()
+        writer.writerows(results_rows)
+
+
+def write_header(output_file):
+
+    with open(output_file, "w", newline="") as csvfile:
+        fieldnames = [
+            "Filename",
+            "Measure",
+            "BldgType",
+            "BldgLoc",
+            "BldgHVAC",
+            "Run Type",
+            "Cooling Capacity",
+            "Heating Capacity",
+            "Conditioned Area",
+            "Electricity Heating",
+            "Natural Gas Heating",
+            "Electricity Cooling",
+            "Electricity Fans",
+            "Unmet Hours Heating",
+            "Unmet Hours Cooling",
         ]
         writer = csv.DictWriter(csvfile, fieldnames)
         writer.writeheader()
-        writer.writerows(energy_results)
 
 
 def main():
 
     # root of the DEER package install
     if platform.system() in ["Windows"]:
-        root = "C:\\"
-        search_folder = "Saved Runs\\"
-        results_folder = PurePath("C:\\Results\\")
+        root = "D:\\"
+        search_folder = "Simulations\\"
+        results_folder = PurePath("D:\\Summary Results\\")
     elif platform.system() in ["Linux", "Darwin"]:
         root = "/Users/jwj/"
         search_folder = "e_plus_runs/"
@@ -131,33 +221,34 @@ def main():
     offset = len(PurePath(root).parts) + len(PurePath(search_folder).parts)
 
     # Results file_name
-    results_file_name = "instance-var.csv"
+    results_file_name = "eplustbl.csv"
 
     # Get all the results files
     all_files = search_directories(search_path, results_file_name)
 
-    # Create batches by building type and measure, only for the measure type not the baseline type
+    # Create batches
     batches = by_batch(offset, all_files)
+
+    results_output_file = PurePath.joinpath(
+        results_folder,
+        PurePath("Summary-Report.csv"),
+    )
+    write_header(results_output_file)
 
     # Do each batch
     for building_type in batches.keys():
         for measure in batches[building_type].keys():
-            print(
-                "Processing Building Type: {}, Measure: {}".format(
-                    building_type, measure
-                )
-            )
-            results_output_file = PurePath.joinpath(
-                results_folder, PurePath("{}-{}.csv".format(building_type, measure))
-            )
-            column_match_output_file = PurePath.joinpath(
-                results_folder,
-                PurePath("{}-{}-columns.txt".format(building_type, measure)),
-            )
-            print("Into Results File {}".format(str(results_output_file)))
-            batch = batches[building_type][measure]
-
-            # write_results(results, results_output_file)
+            for system_type in batches[building_type][measure].keys():
+                for type in batches[building_type][measure][system_type].keys():
+                    print(
+                        "Processing {} {} {} {}".format(
+                            building_type, measure, system_type, type
+                        )
+                    )
+                    rows = process(
+                        batches[building_type][measure][system_type][type], offset
+                    )
+                    write_results(rows, results_output_file)
 
 
 if __name__ == "__main__":

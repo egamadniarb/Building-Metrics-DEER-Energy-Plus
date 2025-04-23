@@ -540,9 +540,9 @@ def main():
 
     # root of the DEER package install
     if platform.system() in ["Windows"]:
-        root = "C:\\"
-        search_folder = "Saved Runs\\"
-        results_folder = PurePath("C:\\Results\\")
+        root = "D:\\"
+        search_folder = "Simulations\\"
+        results_folder = PurePath("D:\\Hourly Results\\")
     elif platform.system() in ["Linux", "Darwin"]:
         root = "/Users/jwj/"
         search_folder = "e_plus_runs/"
