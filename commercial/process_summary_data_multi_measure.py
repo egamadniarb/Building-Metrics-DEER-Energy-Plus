@@ -41,6 +41,34 @@ def by_batch(offset, all_files):
     return batches
 
 
+def should_ignore(building_type, system_type, column):
+
+    if system_type in ["cDXGF", "cDXHP", "cPTAC"]:
+        if not re.search("SZ-CAV", column, flags=re.IGNORECASE):
+            return True
+        if building_type in ["EPr", "ESe", "EUn", "MBT", "RFF", "RSD", "RtL", "Htl"]:
+            if re.search("KITCHEN", column, flags=re.IGNORECASE):
+                return True
+        if building_type in ["EUn"]:
+            if re.search("DORM", column, flags=re.IGNORECASE):
+                return True
+        if building_type in ["Htl"]:
+            if re.search("GUESTRM", column, flags=re.IGNORECASE):
+                return True
+    if system_type in ["cPVVG"]:
+        if not re.search("SZ-VAV", column, flags=re.IGNORECASE):
+            return True
+        if building_type in ["ECC", "Htl"]:
+            if re.search("KITCHEN", column, flags=re.IGNORECASE):
+                return True
+        if building_type in ["MBT"]:
+            if re.search("LAB", column, flags=re.IGNORECASE):
+                return True
+        if re.search(" ATU", column, flags=re.IGNORECASE):
+            return True
+    return False
+
+
 def process(batch, offset):
 
     result_rows = []
@@ -95,7 +123,8 @@ def process(batch, offset):
                     if report_flag and cooling_flag:
                         if row[0] == "" and row[1] != "":
                             # print(row)
-                            cooling_total_capacity += float(row[4])
+                            if not should_ignore(building_type, system_type, row[1]):
+                                cooling_total_capacity += float(row[4])
                             continue
                         elif row[0] != "":
                             cooling_flag = False
@@ -108,7 +137,8 @@ def process(batch, offset):
                             result_row["Heating Capacity"] = heating_total_capacity
                         elif row[0] == "" and row[1] != "":
                             # print(row)
-                            heating_total_capacity += float(row[4])
+                            if not should_ignore(building_type, system_type, row[1]):
+                                heating_total_capacity += float(row[4])
                             continue
                         elif row[0] != "":
                             heating_flag = False
