@@ -63,14 +63,22 @@ def by_batch(offset, all_files):
 
 def should_ignore(building_type, system_type, column):
 
+    # if "DORM" in column:
+    #     print(column)
+    # if "KITCHEN" in column:
+    #     print(column)
     if system_type in ["cDXGF", "cDXHP", "cPTAC"]:
         if not re.search("SZ-CAV", column, flags=re.IGNORECASE):
             return True
-        if building_type in ["EPr", "ESe", "EUn", "MBT", "RFF", "RSD", "RtL", "Htl"]:
-            if re.search("KITCHEN", column, flags=re.IGNORECASE):
+        if building_type in ["Epr", "Ese", "Eun", "MBT", "RFF", "RSD", "RtL", "Htl"]:
+            if "KITCHEN" in column:
+                # if re.search("KITCHEN", column, flags=re.IGNORECASE):
+                # print(f"Ignoring: {column}")
                 return True
-        if building_type in ["EUn"]:
-            if re.search("DORM", column, flags=re.IGNORECASE):
+        if building_type in ["Eun"]:
+            if "DORM" in column:
+                # if re.search("DORM", column, flags=re.IGNORECASE):
+                print(f"Ignoring: {column}")
                 return True
         if building_type in ["Htl"]:
             if re.search("GUESTRM", column, flags=re.IGNORECASE):
@@ -541,8 +549,8 @@ def main():
     # root of the DEER package install
     if platform.system() in ["Windows"]:
         root = "D:\\"
-        search_folder = "Simulations\\"
-        results_folder = PurePath("D:\\Hourly Results\\")
+        search_folder = "Simulations Test\\"
+        results_folder = PurePath("D:\\Hourly Results Test\\")
     elif platform.system() in ["Linux", "Darwin"]:
         root = "/Users/jwj/"
         search_folder = "e_plus_runs/"
