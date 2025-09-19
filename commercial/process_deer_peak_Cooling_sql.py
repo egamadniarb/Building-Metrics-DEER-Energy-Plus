@@ -149,8 +149,8 @@ def process(offset, all_files, output_file):
         peak = get_deer_peak_range(file, cz)
 
         query_filter = "SELECT KeyValue \
-                    FROM ReportVariableDataDictionary \
-                    WHERE ReportVariableDataDictionary.VariableName = {}".format(
+                            FROM ReportVariableDataDictionary \
+                            WHERE VariableName = {}".format(
             '"Cooling Coil Electricity Energy"'
         )
 
