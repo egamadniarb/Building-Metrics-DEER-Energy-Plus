@@ -82,6 +82,43 @@ def get_deer_peak_range(file, cz):
     return [x[0] for x in rows]
 
 
+def should_ignore(building_type, system_type, column):
+
+    if system_type in ["cDXGF", "cDXHP", "cPTAC"]:
+        if "SZ-CAV" not in column:
+            return True
+        if building_type.lower() in [
+            "epr",
+            "ese",
+            "eun",
+            "mbt",
+            "rff",
+            "rsd",
+            "rtl",
+            "htl",
+        ]:
+            if "KITCHEN" in column:
+                return True
+        if building_type.lower() in ["eun"]:
+            if "DORM" in column:
+                return True
+        if building_type.lower() in ["htl"]:
+            if "GUESTRM" in column:
+                return True
+    if system_type in ["cPVVG"]:
+        if "SZ-VAV" not in column:
+            return True
+        if building_type.lower() in ["ecc", "htl"]:
+            if "KITCHEN" in column:
+                return True
+        if building_type.lower() in ["mbt"]:
+            if "LAB" in column:
+                return True
+        if " ATU" in column:
+            return True
+    return False
+
+
 def process(offset, all_files, output_file):
 
     with open(output_file, "w", newline="") as csvfile:
@@ -107,16 +144,42 @@ def process(offset, all_files, output_file):
         system_type = run[1]
         run_type = run[2]
 
+        print(building_type, cz, measure, system_type, run_type)
+
         peak = get_deer_peak_range(file, cz)
+
+        query_filter = "SELECT KeyValue \
+                    FROM ReportVariableDataDictionary \
+                    WHERE ReportVariableDataDictionary.VariableName = {}".format(
+            '"Cooling Coil Electricity Energy"'
+        )
+
+        with sqlite3.connect(file) as conn:
+            cur = conn.cursor()
+            cur.execute(query_filter)
+            system_rows = cur.fetchall()
+            systems = [x[0] for x in system_rows]
+
+        ignore_list = []
+        keep_list = []
+
+        for system in systems:
+            if should_ignore(building_type, system_type, system):
+                ignore_list.append(system)
+            else:
+                keep_list.append(system)
 
         sql = "SELECT sum(VariableValue) \
                     FROM ReportVariableData, ReportVariableDataDictionary \
                     WHERE ReportVariableDataDictionary.VariableName = {} \
                         and ReportVariableData.ReportVariableDataDictionaryIndex = \
                             ReportVariableDataDictionary.ReportVariableDataDictionaryIndex \
-                        and ReportVariableData.TimeIndex IN ({seq}) \
+                        and ReportVariableDataDictionary.KeyValue IN ({seq}) \
+                        and ReportVariableData.TimeIndex IN ({seq1}) \
                     Group BY TimeIndex".format(
-            '"Cooling Coil Electricity Energy"', seq=",".join(["?"] * len(peak))
+            '"Cooling Coil Electricity Energy"',
+            seq=",".join(["?"] * len(keep_list)),
+            seq1=",".join(["?"] * len(peak)),
         )
 
         sql2 = "SELECT VariableValue \
@@ -130,7 +193,7 @@ def process(offset, all_files, output_file):
 
         with sqlite3.connect(file) as conn:
             cur = conn.cursor()
-            cur.execute(sql, peak)
+            cur.execute(sql, keep_list + peak)
             energy_rows = cur.fetchall()
             cur.execute(sql2, peak)
             temperature_rows = cur.fetchall()
@@ -140,7 +203,6 @@ def process(offset, all_files, output_file):
 
         temperature_avg = sum(temperature) / len(temperature)
         electric_usage_avg = sum(energy) / len(energy)
-        print(building_type, cz, measure, system_type, run_type)
         output_row = {
             "Building Type": building_type,
             "Measure": measure,
