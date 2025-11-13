@@ -21,15 +21,7 @@ def search_directories(path, file_name):
 def process(offset, all_files, output_file):
 
     for file in all_files:
-        with open(output_file, "a", newline="") as csvfile:
-            fieldnames = [
-                "Building Type",
-                "System Type",
-                "Rating",
-                "Climate Zone",
-            ]
-            writer = csv.DictWriter(csvfile, fieldnames)
-            writer.writeheader()
+
         parts = PurePath(file).parts
         cz = parts[offset + 3]
         building_type_root = parts[offset + 1].split("_")[1]
@@ -110,7 +102,20 @@ def process(offset, all_files, output_file):
                     continue
         else:
             print("Shit")
+
+        if not system_type == "SEER_Rated_DXGF":
+            continue
         # print(building_type, system_type, rating, cz)
+
+        with open(output_file, "a", newline="") as csvfile:
+            fieldnames = [
+                "Building Type",
+                "System Type",
+                "Rating",
+                "Climate Zone",
+            ]
+            writer = csv.DictWriter(csvfile, fieldnames)
+            writer.writeheader()
 
         output_row = {
             "Building Type": building_type,
@@ -167,90 +172,194 @@ def process(offset, all_files, output_file):
 
         # print(facility_occupied_heating, facility_occupied_cooling)
 
+        ######################################################################
+        # Occupied Heating
+        ######################################################################
+
+        # query = "SELECT RowName, ColumnName, Value \
+        #                     FROM TabularDataWithStrings \
+        #                     WHERE TableName = {} and \
+        #                         ColumnName = {}".format(
+        #     '"Time Setpoint Not Met"',
+        #     '"During Occupied Heating"',
+        # )
+
+        # with sqlite3.connect(file) as conn:
+        #     cur = conn.cursor()
+        #     cur.execute(query)
+        #     system_occupied_rows = cur.fetchall()
+
+        # occupied_heating = []
+        # for system_occupied_row in system_occupied_rows:
+        #     hours = []
+        #     hours.append(system_occupied_row[0].strip())
+        #     hours.append(float(system_occupied_row[2].strip()))
+        #     occupied_heating.append(hours)
+
+        # with open(output_file, "a", newline="") as csvfile:
+        #     fieldnames = [
+        #         "Zone",
+        #         "Time Setpoint Not Met During Occupied Heating",
+        #     ]
+        #     writer = csv.DictWriter(csvfile, fieldnames)
+        #     writer.writeheader()
+
+        # output_rows = []
+        # for system in occupied_heating:
+        #     output_row = {
+        #         "Zone": system[0],
+        #         "Time Setpoint Not Met During Occupied Heating": system[1],
+        #     }
+        #     output_rows.append(output_row)
+
+        # with open(output_file, "a", newline="") as csvfile:
+        #     fieldnames = [
+        #         "Zone",
+        #         "Time Setpoint Not Met During Occupied Heating",
+        #     ]
+        #     writer = csv.DictWriter(csvfile, fieldnames)
+        #     writer.writerows(output_rows)
+
+        # ######################################################################
+        # # Occupied Cooling
+        # ######################################################################
+
+        # query = "SELECT RowName, ColumnName, Value \
+        #                     FROM TabularDataWithStrings \
+        #                     WHERE TableName = {} and \
+        #                         ColumnName = {}".format(
+        #     '"Time Setpoint Not Met"',
+        #     '"During Occupied Cooling"',
+        # )
+
+        # with sqlite3.connect(file) as conn:
+        #     cur = conn.cursor()
+        #     cur.execute(query)
+        #     system_occupied_rows = cur.fetchall()
+
+        # occupied_cooling = []
+        # for system_occupied_row in system_occupied_rows:
+        #     hours = []
+        #     hours.append(system_occupied_row[0].strip())
+        #     hours.append(float(system_occupied_row[2].strip()))
+        #     occupied_cooling.append(hours)
+
+        # with open(output_file, "a", newline="") as csvfile:
+        #     fieldnames = [
+        #         "Zone",
+        #         "Time Setpoint Not Met During Occupied Cooling",
+        #     ]
+        #     writer = csv.DictWriter(csvfile, fieldnames)
+        #     writer.writeheader()
+
+        # output_rows = []
+        # for system in occupied_cooling:
+        #     output_row = {
+        #         "Zone": system[0],
+        #         "Time Setpoint Not Met During Occupied Cooling": system[1],
+        #     }
+        #     output_rows.append(output_row)
+
+        # with open(output_file, "a", newline="") as csvfile:
+        #     fieldnames = [
+        #         "Zone",
+        #         "Time Setpoint Not Met During Occupied Cooling",
+        #     ]
+        #     writer = csv.DictWriter(csvfile, fieldnames)
+        #     writer.writerows(output_rows)
+
+        ######################################################################
+        # Heating
+        ######################################################################
+
         query = "SELECT RowName, ColumnName, Value \
                             FROM TabularDataWithStrings \
                             WHERE TableName = {} and \
                                 ColumnName = {}".format(
             '"Time Setpoint Not Met"',
-            '"During Occupied Heating"',
+            '"During Heating"',
         )
 
         with sqlite3.connect(file) as conn:
             cur = conn.cursor()
             cur.execute(query)
-            system_occupied_rows = cur.fetchall()
+            system_rows = cur.fetchall()
 
-        occupied_heating = []
-        for system_occupied_row in system_occupied_rows:
+        heating = []
+        for system_row in system_rows:
             hours = []
-            hours.append(system_occupied_row[0].strip())
-            hours.append(float(system_occupied_row[2].strip()))
-            occupied_heating.append(hours)
+            hours.append(system_row[0].strip())
+            hours.append(float(system_row[2].strip()))
+            heating.append(hours)
 
         with open(output_file, "a", newline="") as csvfile:
             fieldnames = [
                 "Zone",
-                "Time Setpoint Not Met During Occupied Heating",
+                "Time Setpoint Not Met During Heating",
             ]
             writer = csv.DictWriter(csvfile, fieldnames)
             writer.writeheader()
 
         output_rows = []
-        for system in occupied_heating:
+        for system in heating:
             output_row = {
                 "Zone": system[0],
-                "Time Setpoint Not Met During Occupied Heating": system[1],
+                "Time Setpoint Not Met During Heating": system[1],
             }
             output_rows.append(output_row)
 
         with open(output_file, "a", newline="") as csvfile:
             fieldnames = [
                 "Zone",
-                "Time Setpoint Not Met During Occupied Heating",
+                "Time Setpoint Not Met During Heating",
             ]
             writer = csv.DictWriter(csvfile, fieldnames)
             writer.writerows(output_rows)
 
+        ######################################################################
+        # Cooling
+        ######################################################################
+
         query = "SELECT RowName, ColumnName, Value \
                             FROM TabularDataWithStrings \
                             WHERE TableName = {} and \
                                 ColumnName = {}".format(
             '"Time Setpoint Not Met"',
-            '"During Occupied Cooling"',
+            '"During Cooling"',
         )
 
         with sqlite3.connect(file) as conn:
             cur = conn.cursor()
             cur.execute(query)
-            system_occupied_rows = cur.fetchall()
+            system_rows = cur.fetchall()
 
-        occupied_cooling = []
-        for system_occupied_row in system_occupied_rows:
+        cooling = []
+        for system_row in system_rows:
             hours = []
-            hours.append(system_occupied_row[0].strip())
-            hours.append(float(system_occupied_row[2].strip()))
-            occupied_cooling.append(hours)
+            hours.append(system_row[0].strip())
+            hours.append(float(system_row[2].strip()))
+            cooling.append(hours)
 
         with open(output_file, "a", newline="") as csvfile:
             fieldnames = [
                 "Zone",
-                "Time Setpoint Not Met During Occupied Cooling",
+                "Time Setpoint Not Met During Cooling",
             ]
             writer = csv.DictWriter(csvfile, fieldnames)
             writer.writeheader()
 
         output_rows = []
-        for system in occupied_cooling:
+        for system in cooling:
             output_row = {
                 "Zone": system[0],
-                "Time Setpoint Not Met During Occupied Cooling": system[1],
+                "Time Setpoint Not Met During Cooling": system[1],
             }
             output_rows.append(output_row)
 
         with open(output_file, "a", newline="") as csvfile:
             fieldnames = [
                 "Zone",
-                "Time Setpoint Not Met During Occupied Cooling",
+                "Time Setpoint Not Met During Cooling",
             ]
             writer = csv.DictWriter(csvfile, fieldnames)
             writer.writerows(output_rows)
